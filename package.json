@@ -10,6 +10,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@buidlerlabs/hedera-strato-js": "^0.7.4",
     "@hashgraph/sdk": "^2.13.0",
     "axios": "^0.27.2",
     "cors": "^2.8.5",
@@ -18,7 +19,7 @@
     "express": "^4.17.1",
     "firebase": "^9.6.11",
     "firebase-admin": "^10.1.0",
-    "firebase-functions": "^3.20.1",
+    "firebase-functions": "^3.21.0",
     "hashconnect": "^0.1.5",
     "nodemon": "^2.0.13",
     "request": "^2.88.2",

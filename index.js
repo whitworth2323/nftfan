@@ -4,6 +4,7 @@ import { HashConnect } from 'hashconnect';
 import { initializeApp } from 'firebase/app';
 const axios= require('axios');
 import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore"; 
+const { Account, ApiSession, Contract, Token, TokenTypes} =  require('@buidlerlabs/hedera-strato-js');
 
 //temporary holding of firebase config. Will also be moved to an .env soon
 const firebaseConfig = {
@@ -45,9 +46,8 @@ app.use(cors());
 app.use(express.urlencoded( {extended: true} ))
 
 //temporary holding variables for Owner Testnet and Mainnet (will be moved to .env variable soon)
-const toAccTestnet    = "0.0.34330894";
-//const toAccountMainnet= "0.0.467121";
-const toAccountMainnet = "0.0.915243";
+const toAccTestnet    = "0.0.467126";
+const toAccountMainnet= "0.0.467121";
 
 //setting Owner's wallet as Client (for sending transactions, NFTs, and royalties)
 const myAccountIdTestnet = process.env.MY_ACCOUNT_ID;
@@ -64,25 +64,6 @@ client.setOperator(myAccountIdTestnet, myPrivateKeyTestnet);
 
 // Handle GET requests to / route
 app.get('/', async (req, res) => {
-return res.status(200).send("NFT Fan dApp");
-/*admin.auth()
-  .createUser({
-    email: 'admindemo@ttecht.com',
-    emailVerified: true,
-    password: 'aZK2b4x$',
-    displayName: 'John Doe',
-    photoURL: 'https://google.com/test.png',
-    disabled: false,
-  })
-  .then((userRecord) => {
-    // See the UserRecord reference doc for the contents of userRecord.
-    console.log('Successfully created new user:', userRecord.uid);
-  })
-  .catch((error) => {
-    console.log('Error creating new user:', error);
-  });
-
-
   try {
     const appMetadata = {
       name: "NFT Fan",
@@ -106,7 +87,7 @@ return res.status(200).send("NFT Fan dApp");
     return res.status(200).send({success: true, data: data});
   } catch (error) {
     return res.status(400).send({success: false, message: error.message});
-  }*/
+  }
 });
 const kPurchase1Token = ".tokens.1";
 const kPurchase4Token = ".tokens.4";
@@ -423,6 +404,191 @@ app.post("/getMetadata", async (req, res) => {
   } catch (error) {
     return res.status(400).send({success: false, message: error.message});
   }
+});
+
+app.post("/launchContract", async (req, res) => { 
+  try{
+    
+      const name = req.body.name;
+      const symbol = req.body.symbol;
+      // const maxsupply = req.body.maxSupply;  
+  
+      const nftPriceInHbar = new Hbar(10);
+      
+      const defaultNonFungibleTokenFeatures = {
+          decimals: 0,
+          initialSupply: 0,
+          keys: {
+              kyc: null
+          },
+          maxSupply: 1000,
+          name: name,
+          supplyType: TokenSupplyType.Finite,
+          symbol: symbol,
+          type: TokenTypes.NonFungibleUnique
+      };
+      
+      
+      // Initialize the session
+      const { session } = await ApiSession.default();
+      
+      // Create the CreatableEntities and the UploadableEntities
+      
+      const token = new Token(defaultNonFungibleTokenFeatures);
+      
+      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
+      
+      const liveToken = await session.create(token);
+      
+      const liveContract = await session.upload(
+          contract,
+          { _contract: { gas: 200_000 } },
+          liveToken,
+          session,
+          nftPriceInHbar._valueInTinybar
+          
+      );
+      
+      // Assign supply control of the token to the live contract
+      liveToken.assignSupplyControlTo(liveContract);
+      
+      
+      const contractInfo = await liveContract.getLiveEntityInfo();
+      
+      // console.log(`HBar balance of contract: ${contractInfo.balance.toBigNumber().toNumber()}`);
+      const livetokenInfo = await liveToken.getLiveEntityInfo();
+      
+      const contractID = await liveContract.id.toString();
+      const tokenID = await liveToken.id.toString();
+      
+      const abi = contract.interface;
+      
+      
+      const docRef = {
+          contractID: contractID,
+          tokenID: tokenID,
+      
+          // abi:JSON.parse(JSON.stringify(abi)),
+          msg : "LIVE CONTRACT DEPLOYED SUCCESSFULLY"
+        };
+        admin.firestore().collection('livecontracts').add(docRef);
+      
+        const data= {
+          contractID:contractID,
+          tokenID:tokenID
+        }
+      
+      return res.status(200).send({success: true, message: "LIVE CONTRACT DEPLOYED SUCCESSFULLY",data:data});
+  
+  }
+  
+  
+  catch (error) {
+      return res.status(400).send({success: false, message: error.message});
+  }
+  });
+  
+  
+app.post("/mintNFT", async (req, res) => { 
+    try{
+
+        const contractId = req.body.contractID;
+        const toAccount = req.body.toaccount;
+        const toPrivateKey = req.body.privatekey;
+        const amountToMint = req.body.amountmint;
+        const metadata = req.body.metadata;
+
+        let contractData;
+        const ans = await admin.firestore().collection('livecontracts').where('contractID','==',contractId)
+        .get().then(querySnapshot => {
+            querySnapshot.forEach(doc => {
+            contractData = doc.data();             
+          })
+        })
+        .catch(err => console.log(err.message))
+        
+
+      const accId = AccountId.fromString(toAccount);
+      const singsKey = PrivateKey.fromString(toPrivateKey);
+      let toMintAccount = AccountId.fromString(toAccount).toSolidityAddress();
+      
+      
+      const nftPriceInHbar = new Hbar(10);
+              
+      // const account = new Account({ maxAutomaticTokenAssociations: 10});
+      
+      // Initialize the session
+      const { session } = await ApiSession.default();
+      
+      
+      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
+      
+      
+      const liveContract = await session.getLiveContract({ id:contractData.contractID , abi: contract.interface});
+      
+      
+      const operatorId = AccountId.fromString(process.env.HEDERAS_OPERATOR_ID);
+      const operatorKey = PrivateKey.fromString(process.env.HEDERAS_OPERATOR_KEY);
+      
+      // Call the Solidity mint function
+      const client = Client.forTestnet().setOperator(operatorId, operatorKey);
+      
+      
+      let associateTx = await new AccountUpdateTransaction()
+      .setAccountId(accId)
+      .setMaxAutomaticTokenAssociations(10)
+      .freezeWith(client)
+      .sign(singsKey);
+      let associateTxSubmit = await associateTx.execute(client);
+      let associateRx = await associateTxSubmit.getReceipt(client);
+      
+      
+      const convertBigNumberArrayToNumberArray = (array) => array.map(item => item.toNumber());
+      
+      
+      const cidd = metadata;      
+      
+          const serialNumbers = await liveContract.mint(
+          {
+              amount: new Hbar(nftPriceInHbar.toBigNumber().toNumber() * amountToMint).toBigNumber().toNumber(),
+              gas: 1_500_000
+          },
+          toMintAccount,
+          amountToMint,
+          cidd
+      );
+      
+      const tokenID = contractData.tokenID;
+      const serialNumber = convertBigNumberArrayToNumberArray(serialNumbers);
+      
+      const docRef = {
+          contractID: contractId,
+          tokenID: tokenID,
+          serialNumber: serialNumber,
+          toAccount: toAccount,
+          // abi:JSON.parse(JSON.stringify(abi)),
+          msg : "TOKEN SERIAL MINTED SUCCESSFULLY SUCCESSFULLY"
+        };
+        admin.firestore().collection('tokenmints').add(docRef);
+      
+        const data= {
+          contractID:contractId,
+          tokenID:tokenID,
+          serialNumber:serialNumber,
+          toAccount:toAccount
+        }
+      const message = "Serial Number " + serialNumber + " Minted on Token ID " + tokenID + " Successfully.";
+
+      const contractInfo = await liveContract.getLiveEntityInfo();
+      
+      
+      
+      return res.status(200).send({success: true, message: message,data:data});
+
+    }
+catch (error) {
+    return res.status(400).send({success: false, message: error.message});
+}
 });
 
 async function makeBytes(trans, signingAcctId) {
