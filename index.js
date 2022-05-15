@@ -1,3 +1,4 @@
+//Hedera, Hashconnect, Firebase and Axios imports
 require("dotenv").config();
 import { Client, Hbar, HbarUnit, TokenAssociateTransaction, TransactionReceipt, TransferTransaction, TransactionId, AccountId, PrivateKey, TokenSupplyType } from '@hashgraph/sdk';
 import { HashConnect } from 'hashconnect';
@@ -6,26 +7,24 @@ const axios = require('axios');
 import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore";
 import { Account, ApiSession, Contract, Token, TokenTypes } from '@buidlerlabs/hedera-strato-js';
 
-
+//Firebase config
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 var serviceAccount = require("./nft-fan-firebase-adminsdk-1rgug-87ce887a7d.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
-
-//admin.initializeApp(firebaseConfig);
 const firestore = admin.firestore();
 firestore.settings({ timestampsInSnapshots: true, ignoreUndefinedProperties: true });
+
+//Node config
 const express = require('express');
 const cors = require('cors');
 const request = require('request');
 const app = express();
 const bodyParser = require('body-parser')
 
-
-//const firebaseapp = initializeApp(firebaseConfig);
-//const firebasedb = getFirestore(firebaseapp);
+//Server and Hashconnect start
 const port = process.env.port || 3333;
 let hashconnect = new HashConnect();
 
@@ -36,8 +35,8 @@ app.use(express.urlencoded({ extended: true }))
 
 
 //variables that manage which account is paid into by Users of the App
-const toAccTestnet    = process.env.MY_ACCOUNT_ID;
-const toAccountMainnet = process.env.MY_ACCOUNT_ID_M;
+const toAccTestnet    = process.env.TO_ACCOUNT;
+const toAccountMainnet = process.env.TO_ACCOUNT_M;
 
 //setting Owner's wallet as Client (for sending transactions, NFTs, and royalties)
 const myAccountIdTestnet = process.env.MY_ACCOUNT_ID;
@@ -48,43 +47,22 @@ const myAccountIdMainnet = process.env.MY_ACCOUNT_ID_M;
 const myPrivateKeyMainnet = process.env.MY_PRIVATE_KEY_M;
 const auroraAccountIdMainnet = process.env.AURORA_ID_M;
 
+//initial client for Hedera operations
 let client = Client.forTestnet();
 client.setOperator(myAccountIdTestnet, myPrivateKeyTestnet);
 
 
-// Handle GET requests to / route
+// Handle GET requests to / route (Base test route)
 app.get('/', async (req, res) => {
-  try {
-    const appMetadata = {
-      name: "NFT Fan",
-      description: "Fan Club for Hedera",
-      icon: "https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2F1024.svg?alt=media&token=dc2fbbd0-98f2-4110-9e05-01529db42937",
-      url: "https://nftfan.host/"
-    }
-    let initData = await hashconnect.init(appMetadata);
-    let privKey = initData.privKey;
-    let state = await hashconnect.connect();
-    let pairingString = await hashconnect.generatePairingString(state, "testnet", true);
-    let pairedStatus = await hashconnect.pairingEvent.on(async (data) => {
-      console.log('Paired', data);
-    });
-    const data = {
-      privKey: privKey,
-      pairingString: pairingString,
-      topic: state.topic,
-      status: pairedStatus,
-    };
-    return res.status(200).send({ success: true, data: data });
-  } catch (error) {
-    return res.status(400).send({ success: false, message: error.message });
-  }
+  
+    return res.status(200).send({ success: true});
 });
 const kPurchase1Token = ".tokens.1";
 const kPurchase4Token = ".tokens.4";
 const kAppleIAPService = "Hbar";
 const kAndroidIAPService = "android-iap";
 
-
+//Get the HashConnect Pairing Code
 app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
   try {
     const appMetadata = {
@@ -102,16 +80,7 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
     let pairingString = await hashconnect.generatePairingString(state, hederaNetwork, true);
     let pairedStatus = await hashconnect.pairingEvent.once(async (data) => {
       console.log('Paired', data);
-      /*const docRef = await addDoc(collection(firebasedb, "walletresponses"), {
-        accountIds: data.accountIds,
-        network: data.network,
-        responseID: data.id,
-        topic: data.topic,
-        userID: memberID,
-        metadata: data.metadata
-      });
-    console.log("Document written with ID: ", docRef.id);*/
-
+    
       const docRef = {
         accountIds: data.accountIds,
         network: data.network,
@@ -121,8 +90,6 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
         metadata: data.metadata,
       };
       admin.firestore().collection('walletresponses').add(docRef);
-      //admin.firestore().doc('walletresponses').add(docRef);
-      //admin.firestore().doc(collection(firebasedb, "walletresponses")).add(docRef);
 
     });
 
@@ -138,6 +105,7 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
   }
 });
 
+//Send HBAR transaction for Comm Tokens
 app.post("/sendTransaction", async (req, res) => {
   
   const appMetadata = {
@@ -261,11 +229,12 @@ app.post("/sendTransaction", async (req, res) => {
   
 });
 
+//Start Server
 app.listen(port, () => {
   console.log('Server is up on port ' + port)
 });
 
-//initial QR verficiation function
+//initial QR verficiation function (for verifying subNFTs)
 app.post("/getMetadata", async (req, res) => {
   try {
     const qr = req.body.qr;
@@ -342,8 +311,6 @@ app.post("/getMetadata", async (req, res) => {
       let foundPairedWalletID = "0.0.0000000";
 
       if (pairedWallets.includes(ownerOfTheSubNFT)) {
-        //console.log("pairedWallets: ", pairedWallets);
-        //console.log("Yes, you own the subNFT in this wallet. ");
         foundInPairedWallet = true;
         foundPairedWalletID = ownerOfTheSubNFT;
       }
@@ -367,7 +334,7 @@ app.post("/getMetadata", async (req, res) => {
   }
 });
 
-
+//Launch Initial Smart Contract for Minting subNFTs and paying Royalties
 app.post("/launchContract", async (req, res) => {
   try {
 
@@ -450,7 +417,7 @@ app.post("/launchContract", async (req, res) => {
   }
 });
 
-
+//Minting subNFTs on a live contract
 app.post("/mintNFT", async (req, res) => { 
     try{
 
@@ -564,6 +531,7 @@ catch (error) {
 }
 });
 
+//Transfer a subNFT to an Auction winner (triggered by Firebase Cloud functions when user has won auction)
 app.post("/transferNFT", async (req, res) => { 
   try
   {
@@ -604,6 +572,7 @@ app.post("/transferNFT", async (req, res) => {
   });
 
 
+
 async function makeBytes(trans, signingAcctId) {
   let transId = TransactionId.generate(signingAcctId);
   trans.setTransactionId(transId);
@@ -629,6 +598,8 @@ const getCurrentTokenBalanceForUserId = async (userId) => {
   });
 };
 
+
+//Billing Log for Firebase to track HBAR purchases of Comm Tokens
 async function createBilling(userid, hbarAmount, tokenamount) {
 
   const userId = userid;
@@ -750,10 +721,6 @@ async function payRoyalty(userid, hbaramount, tokenamount, network) {
     client = Client.forMainnet();
     client.setOperator(myAccountId, myPrivateKey);
   }
-
-  console.log("myAccountId: ", myAccountId);
-  console.log("myPrivateKey: ", myPrivateKey);
-  console.log("auroraAccountId: ", auroraAccountId);
 
   // Create a transaction to transfer the royalty to the NFT Creator in hbars
   const transaction = new TransferTransaction()
