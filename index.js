@@ -1,10 +1,10 @@
 require("dotenv").config();
-import { Client, Hbar, HbarUnit, TokenAssociateTransaction, TransactionReceipt, TransferTransaction, TransactionId, AccountId, PrivateKey } from '@hashgraph/sdk';
+import { Client, Hbar, HbarUnit, TokenAssociateTransaction, TransactionReceipt, TransferTransaction, TransactionId, AccountId, PrivateKey, TokenSupplyType } from '@hashgraph/sdk';
 import { HashConnect } from 'hashconnect';
 import { initializeApp } from 'firebase/app';
-const axios= require('axios');
-import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore"; 
-const { Account, ApiSession, Contract, Token, TokenTypes} =  require('@buidlerlabs/hedera-strato-js');
+const axios = require('axios');
+import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore";
+import { Account, ApiSession, Contract, Token, TokenTypes } from '@buidlerlabs/hedera-strato-js';
 
 
 const functions = require("firebase-functions");
@@ -16,38 +16,37 @@ admin.initializeApp({
 
 //admin.initializeApp(firebaseConfig);
 const firestore = admin.firestore();
-firestore.settings({timestampsInSnapshots: true, ignoreUndefinedProperties: true});
-const express       = require('express');
-const cors          = require('cors');
-const request       = require('request');
-const app           = express();
-const bodyParser    = require('body-parser')
+firestore.settings({ timestampsInSnapshots: true, ignoreUndefinedProperties: true });
+const express = require('express');
+const cors = require('cors');
+const request = require('request');
+const app = express();
+const bodyParser = require('body-parser')
 
 
-const firebaseapp = initializeApp(firebaseConfig);
-const firebasedb = getFirestore(firebaseapp);
-const port          = process.env.port || 3333;
+//const firebaseapp = initializeApp(firebaseConfig);
+//const firebasedb = getFirestore(firebaseapp);
+const port = process.env.port || 3333;
 let hashconnect = new HashConnect();
 
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cors());
-app.use(express.urlencoded( {extended: true} ))
+app.use(express.urlencoded({ extended: true }))
 
-//temporary holding variables for Owner Testnet and Mainnet (will be moved to .env variable soon)
+
+//variables that manage which account is paid into by Users of the App
 const toAccTestnet    = process.env.MY_ACCOUNT_ID;
-const toAccountMainnet= process.env.MY_ACCOUNT_ID_M;
+const toAccountMainnet = process.env.MY_ACCOUNT_ID_M;
 
 //setting Owner's wallet as Client (for sending transactions, NFTs, and royalties)
 const myAccountIdTestnet = process.env.MY_ACCOUNT_ID;
 const myPrivateKeyTestnet = process.env.MY_PRIVATE_KEY;
 const auroraAccountIdTestnet = process.env.AURORA_ID;
-const operatorIdTestnet = process.env.HEDERAS_OPERATOR_ID;
 
 const myAccountIdMainnet = process.env.MY_ACCOUNT_ID_M;
 const myPrivateKeyMainnet = process.env.MY_PRIVATE_KEY_M;
 const auroraAccountIdMainnet = process.env.AURORA_ID_M;
-const operatorIdMainnet = process.env.HEDERAS_OPERATOR_ID_M;
 
 let client = Client.forTestnet();
 client.setOperator(myAccountIdTestnet, myPrivateKeyTestnet);
@@ -62,32 +61,28 @@ app.get('/', async (req, res) => {
       icon: "https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2F1024.svg?alt=media&token=dc2fbbd0-98f2-4110-9e05-01529db42937",
       url: "https://nftfan.host/"
     }
-    let initData      = await hashconnect.init(appMetadata);
-    let privKey       = initData.privKey;
-    let state         = await hashconnect.connect();
+    let initData = await hashconnect.init(appMetadata);
+    let privKey = initData.privKey;
+    let state = await hashconnect.connect();
     let pairingString = await hashconnect.generatePairingString(state, "testnet", true);
-    let pairedStatus  = await hashconnect.pairingEvent.on(async(data)  => {
+    let pairedStatus = await hashconnect.pairingEvent.on(async (data) => {
       console.log('Paired', data);
     });
     const data = {
       privKey: privKey,
       pairingString: pairingString,
       topic: state.topic,
-      status:pairedStatus,
+      status: pairedStatus,
     };
-    return res.status(200).send({success: true, data: data});
+    return res.status(200).send({ success: true, data: data });
   } catch (error) {
-    return res.status(400).send({success: false, message: error.message});
+    return res.status(400).send({ success: false, message: error.message });
   }
 });
 const kPurchase1Token = ".tokens.1";
 const kPurchase4Token = ".tokens.4";
-const kAppleIAPService = "hbar";
+const kAppleIAPService = "Hbar";
 const kAndroidIAPService = "android-iap";
-
-
-//app.post("/billing_logs/create", async (req, res) => {
-
 
 
 app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
@@ -98,14 +93,14 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
       icon: "https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2F1024.svg?alt=media&token=dc2fbbd0-98f2-4110-9e05-01529db42937",
       url: "https://nftfan.host/"
     }
-    var memberID= req.params.memberID;
+    var memberID = req.params.memberID;
     var hederaNetwork = req.params.hederaNetwork;
 
-    let initData      = await hashconnect.init(appMetadata);
-    let privKey       = initData.privKey;
-    let state         = await hashconnect.connect();
+    let initData = await hashconnect.init(appMetadata);
+    let privKey = initData.privKey;
+    let state = await hashconnect.connect();
     let pairingString = await hashconnect.generatePairingString(state, hederaNetwork, true);
-    let pairedStatus  = await hashconnect.pairingEvent.once(async(data) => {
+    let pairedStatus = await hashconnect.pairingEvent.once(async (data) => {
       console.log('Paired', data);
       /*const docRef = await addDoc(collection(firebasedb, "walletresponses"), {
         accountIds: data.accountIds,
@@ -117,7 +112,7 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
       });
     console.log("Document written with ID: ", docRef.id);*/
 
-    const docRef = {
+      const docRef = {
         accountIds: data.accountIds,
         network: data.network,
         responseID: data.id,
@@ -126,8 +121,8 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
         metadata: data.metadata,
       };
       admin.firestore().collection('walletresponses').add(docRef);
-    //admin.firestore().doc('walletresponses').add(docRef);
-    //admin.firestore().doc(collection(firebasedb, "walletresponses")).add(docRef);
+      //admin.firestore().doc('walletresponses').add(docRef);
+      //admin.firestore().doc(collection(firebasedb, "walletresponses")).add(docRef);
 
     });
 
@@ -135,72 +130,72 @@ app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
       privKey: privKey,
       pairingString: pairingString,
       topic: state.topic,
-      status:pairedStatus,
+      status: pairedStatus,
     };
-    return res.status(200).send({success: true, data: data});
+    return res.status(200).send({ success: true, data: data });
   } catch (error) {
-    return res.status(400).send({success: false, message: error.message});
+    return res.status(400).send({ success: false, message: error.message });
   }
 });
 
 app.post("/sendTransaction", async (req, res) => {
-  //try {
-    const appMetadata = {
-      name: "NFT Fan",
-      description: "Fan Club for Hedera Aurora Project",
-      icon: "https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2F1024.svg?alt=media&token=dc2fbbd0-98f2-4110-9e05-01529db42937",
-      url: "https://nftfan.host/"
-    }
-    const network         = req.body.network;
-    const memberID        = req.body.memberID;
-    const from            = req.body.from;
-    const topic           = req.body.topic;
-    const walletmetadata  = req.body.metadata;
-    const amount          = req.body.amount;
-    const memo            = req.body.memo;
-    const tokenAmount     = req.body.tokenAmount;
-    const initData        = await hashconnect.init(appMetadata);
-    const state           = await hashconnect.connect(topic, walletmetadata);
-    const trans           = new TransferTransaction().setTransactionMemo(memo);
+  
+  const appMetadata = {
+    name: "NFT Fan",
+    description: "Fan Club for Hedera Aurora Project",
+    icon: "https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2F1024.svg?alt=media&token=dc2fbbd0-98f2-4110-9e05-01529db42937",
+    url: "https://nftfan.host/"
+  }
+  const network = req.body.network;
+  const memberID = req.body.memberID;
+  const from = req.body.from;
+  const topic = req.body.topic;
+  const walletmetadata = req.body.metadata;
+  const amount = req.body.amount;
+  const memo = req.body.memo;
+  const tokenAmount = req.body.tokenAmount;
+  const initData = await hashconnect.init(appMetadata);
+  const state = await hashconnect.connect(topic, walletmetadata);
+  const trans = new TransferTransaction().setTransactionMemo(memo);
 
-    console.log("Walletmetadata: ", walletmetadata);
+  console.log("Walletmetadata: ", walletmetadata);
 
-    const dataTransfer = {
-      transfer: {
-          include_hbar: true,
-          to_hbar_amount: amount,
-          from_hbar_amount: -amount,
-          toAcc: network == 'testnet' ? toAccTestnet : toAccountMainnet,
-          include_token: false,
-          return_transaction: false,
-      },
+  const dataTransfer = {
+    transfer: {
+      include_hbar: true,
+      to_hbar_amount: amount,
+      from_hbar_amount: -amount,
+      toAcc: network == 'testnet' ? toAccTestnet : toAccountMainnet,
+      include_token: false,
+      return_transaction: false,
+    },
+  }
+  trans.addHbarTransfer(dataTransfer.transfer.toAcc, Hbar.from(dataTransfer.transfer.to_hbar_amount, HbarUnit.Hbar)).addHbarTransfer(from, Hbar.from(dataTransfer.transfer.from_hbar_amount, HbarUnit.Hbar))
+  const acctToSign = from;
+  const transactionBytes = await makeBytes(trans, acctToSign);
+  const transaction = {
+    topic: topic,
+    byteArray: transactionBytes,
+    metadata: {
+      accountToSign: acctToSign,
+      returnTransaction: false
     }
-    trans.addHbarTransfer(dataTransfer.transfer.toAcc, Hbar.from(dataTransfer.transfer.to_hbar_amount, HbarUnit.Hbar)).addHbarTransfer(from, Hbar.from(dataTransfer.transfer.from_hbar_amount, HbarUnit.Hbar))
-    const acctToSign  = from;
-    const transactionBytes = await makeBytes(trans, acctToSign);
-    const transaction = {
-      topic: topic,
-      byteArray: transactionBytes,
-      metadata: {
-          accountToSign: acctToSign,
-          returnTransaction: false
-      }
-    };
-    const response = await hashconnect.sendTransaction(topic, transaction);
-    if (response != null)
-    {
+  };
+  const response = await hashconnect.sendTransaction(topic, transaction);
+  if (response != null) {
     try {
-      
-      if(response.success === true){
+
+      //console.Log("response: ", response);
+      if (response.success === true) {
 
         // transaction Completed
-        const topic   = response.topic;
+        const topic = response.topic;
         const success = response.success;
         const receipt = response.receipt;
-        const id      = response.id;
+        const id = response.id;
 
         //save result in Firebase for the Mobile App to get notified
-        const docRef =  {
+        const docRef = {
           topic: topic,
           network: network,
           responseID: id,
@@ -209,26 +204,22 @@ app.post("/sendTransaction", async (req, res) => {
           metadata: walletmetadata,
           HBARamount: amount,
           tokenAmount: tokenAmount,
-          msg : "TRANSACTION COMPLETED"
+          msg: "TRANSACTION COMPLETED"
         };
 
         admin.firestore().collection('transactionresponses').add(docRef);
-        const tenPercentRoyalty = 0.1 * Number(amount);
 
-        console.log("Paying tenPercentRoyalty: ", tenPercentRoyalty);
-
-       
 
         //Add Comm Tokens to the User's balance
         //creditTokens(memberID,amount,tokenAmount);
         createBilling(memberID, amount, tokenAmount);
-        return res.status(200).send({success: true, data: {msg: "TRANSACTION COMPLETED", topic: topic, success: success, receipt: receipt, id: id}});
-      }else{
+        return res.status(200).send({ success: true, data: { msg: "TRANSACTION COMPLETED", topic: topic, success: success, receipt: receipt, id: id } });
+      } else {
         // transaction failed
-        const topic   = response.topic;
+        const topic = response.topic;
         const success = response.success;
-        const error   = response.error;
-        const id      = response.id;
+        const error = response.error;
+        const id = response.id;
 
         const docRef = {
           topic: topic,
@@ -238,58 +229,46 @@ app.post("/sendTransaction", async (req, res) => {
           userID: memberID,
           metadata: walletmetadata,
           HBARamount: amount,
-          tokenAmount: tokenAmount, 
-          msg : "TRANSACTION FAILED"
+          tokenAmount: tokenAmount,
+          msg: "TRANSACTION FAILED"
         };
 
         admin.firestore().collection('transactionresponses').add(docRef);
 
-        return res.status(200).send({success: true, data: {msg: "TRANSACTION FAILED", topic: topic, success: success, error: error, id: id}});
+        return res.status(200).send({ success: true, data: { msg: "TRANSACTION FAILED", topic: topic, success: success, error: error, id: id } });
       }
     } catch (error) {
 
-      const topic   = response.topic;
+      const topic = response.topic;
       const success = response.success;
-      const id      = response.id;
+      const id = response.id;
 
-        const docRef = {
-          topic: topic,
-          network: network,
-          responseID: id,
-          response: success,
-          userID: memberID,
-          metadata: walletmetadata, 
-          msg : error.message
-        };
+      const docRef = {
+        topic: topic,
+        network: network,
+        responseID: id,
+        response: success,
+        userID: memberID,
+        metadata: walletmetadata,
+        msg: error.message
+      };
 
-        admin.firestore().collection('transactionresponses').add(docRef);
+      admin.firestore().collection('transactionresponses').add(docRef);
 
-      return res.status(400).send({success: false, message: error.message});
+      return res.status(400).send({ success: false, message: error.message });
     }
   }
- /* } catch (error) {
-      const topic   = response.topic;
-      const success = response.success;
-      const id      = response.id;
-      const docRef = await addDoc(collection(firebasedb, "transactionresponses"), {
-          topic: topic,
-          network: network,
-          responseID: id,
-          response: success,
-          userID: memberID,
-          metadata: walletmetadata, 
-          msg : error.message
-        });
-        console.log("Document written with ID: ", docRef.id);
-    return res.status(400).send({success: false, message: error.message});
-  }*/
+  
 });
 
+app.listen(port, () => {
+  console.log('Server is up on port ' + port)
+});
 
 //initial QR verficiation function
 app.post("/getMetadata", async (req, res) => {
   try {
-    const qr  = req.body.qr;
+    const qr = req.body.qr;
     const pairedWallets = req.body.pairedWallets;
     const network = req.body.network;
     const tokenID = qr.tokenID;
@@ -301,29 +280,29 @@ app.post("/getMetadata", async (req, res) => {
     if (network === "testnet") {
 
 
-    data = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/tokens/${tokenID}/nfts/${serialNumber}`);
-    rawTokendata = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/tokens/${tokenID}`);
+      data = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/tokens/${tokenID}/nfts/${serialNumber}`);
+      rawTokendata = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/tokens/${tokenID}`);
     }
     else if (network === "mainnet") {
-    
-    data = await axios.get(`https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/${tokenID}/nfts/${serialNumber}`);
-    rawTokendata = await axios.get(`https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/${tokenID}`);
- 
+
+      data = await axios.get(`https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/${tokenID}/nfts/${serialNumber}`);
+      rawTokendata = await axios.get(`https://mainnet-public.mirrornode.hedera.com/api/v1/tokens/${tokenID}`);
+
     }
 
 
-   //console.log("pulled tokenData: ", rawTokendata);
-   //console.log("pulled subNFT Data: ", data);
+    //console.log("pulled tokenData: ", rawTokendata);
+    //console.log("pulled subNFT Data: ", data);
 
-   const tokenData = {
-       name: rawTokendata.data.name,
-       symbol: rawTokendata.data.symbol,
-       supplyType: rawTokendata.data.supply_type,
-       type: rawTokendata.data.type,
-       total_supply: rawTokendata.data.total_supply,
-       tokenID: rawTokendata.data.token_id,
-       created_timestamp: rawTokendata.data.created_timestamp,
-     };
+    const tokenData = {
+      name: rawTokendata.data.name,
+      symbol: rawTokendata.data.symbol,
+      supplyType: rawTokendata.data.supply_type,
+      type: rawTokendata.data.type,
+      total_supply: rawTokendata.data.total_supply,
+      tokenID: rawTokendata.data.token_id,
+      created_timestamp: rawTokendata.data.created_timestamp,
+    };
 
     //console.log("tokenData: ", tokenData);
 
@@ -333,16 +312,14 @@ app.post("/getMetadata", async (req, res) => {
     const operatorKey = PrivateKey.fromString(qr.privateKey);
     const PB_KEY = operatorKey.publicKey.toStringDer()
 
-   // console.log("metadata: ", metadata);
+    // console.log("metadata: ", metadata);
 
     //if we've found any metadata of a real NFT
-    if (PB_KEY === metadata.data.publicKey, metadata.data)
-    {
+    if (PB_KEY === metadata.data.publicKey, metadata.data) {
 
       let dragonGlassLinkAccount = "https://testnet.dragonglass.me/hedera/accounts/" + qr.accountID;
       let dragonGlassTokenAccount = "https://testnet.dragonglass.me/hedera/tokens/" + qr.tokenID;
-      if (network === "testnet")
-      {
+      if (network === "testnet") {
         dragonGlassLinkAccount = "https://testnet.dragonglass.me/hedera/accounts/" + qr.accountID;
         dragonGlassTokenAccount = "https://testnet.dragonglass.me/hedera/tokens/" + qr.tokenID;
         //console.log("DragonGlass link for Account: ", dragonGlassLinkAccount)
@@ -353,8 +330,8 @@ app.post("/getMetadata", async (req, res) => {
         //console.log("DragonGlass link for Account: ", dragonGlassLinkAccount)
       }
       else {
-        dragonGlassLinkAccount = "https://"+ network + "/hedera/accounts/" + qr.accountID;
-        dragonGlassTokenAccount = "https://"+ network +"/hedera/tokens/" + qr.tokenID;
+        dragonGlassLinkAccount = "https://" + network + "/hedera/accounts/" + qr.accountID;
+        dragonGlassTokenAccount = "https://" + network + "/hedera/tokens/" + qr.tokenID;
         //console.log("DragonGlass link for Account: ", dragonGlassLinkAccount)
       }
 
@@ -364,123 +341,118 @@ app.post("/getMetadata", async (req, res) => {
       let foundInPairedWallet = false;
       let foundPairedWalletID = "0.0.0000000";
 
-      if (pairedWallets.includes(ownerOfTheSubNFT))
-      {
+      if (pairedWallets.includes(ownerOfTheSubNFT)) {
         //console.log("pairedWallets: ", pairedWallets);
         //console.log("Yes, you own the subNFT in this wallet. ");
         foundInPairedWallet = true;
         foundPairedWalletID = ownerOfTheSubNFT;
       }
-      else 
-      {
+      else {
         foundInPairedWallet = false;
         foundPairedWalletID = "0.0.0000000";
       }
 
-       
-      return res.status(200).send({success: true, data: {metadata: metadata.data,dragonGlassAccount:dragonGlassLinkAccount,dragonGlassToken:dragonGlassTokenAccount, foundInAPairedWallet: foundInPairedWallet, ownerOfSubNFT:ownerOfTheSubNFT, tokenData: tokenData}});
+
+      return res.status(200).send({ success: true, data: { metadata: metadata.data, dragonGlassAccount: dragonGlassLinkAccount, dragonGlassToken: dragonGlassTokenAccount, foundInAPairedWallet: foundInPairedWallet, ownerOfSubNFT: ownerOfTheSubNFT, tokenData: tokenData } });
 
 
     } //could be invalid QR code or any minted NFT without our metadata
-    else
-    {
-      return res.status(400).send({success: false, message: "Your scanned QR Code did not return a valid subNFT Item."});
+    else {
+      return res.status(400).send({ success: false, message: "Your scanned QR Code did not return a valid subNFT Item." });
     }
 
-    
+
   } catch (error) {
-    return res.status(400).send({success: false, message: error.message});
+    return res.status(400).send({ success: false, message: error.message });
   }
 });
 
 
-app.post("/launchContract", async (req, res) => { 
-  try{
-    
-      const name = req.body.name;
-      const symbol = req.body.symbol;
-  
-  
-      const nftPriceInHbar = new Hbar(10);
-      
-      
-      const defaultNonFungibleTokenFeatures = {
-          decimals: 0,
-          initialSupply: 0,
-          keys: {
-              kyc: null
-          },
-          maxSupply: 1000,
-          name: name,
-          supplyType: TokenSupplyType.Finite,
-          symbol: symbol,
-          type: TokenTypes.NonFungibleUnique
-      };
-      
-      
-      // Initialize the session
-      const { session } = await ApiSession.default();
-      
-      // Create the CreatableEntities and the UploadableEntities
-      
-      
-      const token = new Token(defaultNonFungibleTokenFeatures);
-      
-      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
-      
-      const liveToken = await session.create(token);
-      
-      const liveContract = await session.upload(
-          contract,
-          { _contract: { gas: 200_000 } },
-          liveToken,
-          session,
-          nftPriceInHbar._valueInTinybar
-          
-      );
-      
-      // Assign supply control of the token to the live contract
-      liveToken.assignSupplyControlTo(liveContract);
-      
-      
-      const contractInfo = await liveContract.getLiveEntityInfo();
-      
-      // console.log(`HBar balance of contract: ${contractInfo.balance.toBigNumber().toNumber()}`);
-      const livetokenInfo = await liveToken.getLiveEntityInfo();
-      
-      const contractID = await liveContract.id.toString();
-      const tokenID = await liveToken.id.toString();
-      
-      const abi = contract.interface;
-      
-      
-      const docRef = {
-          contractID: contractID,
-          tokenID: tokenID,
-      
-          // abi:JSON.parse(JSON.stringify(abi)),
-          msg : "LIVE CONTRACT DEPLOYED SUCCESSFULLY"
-        };
-        admin.firestore().collection('livecontracts').add(docRef);
-      
-        const data= {
-          contractID:contractID,
-          tokenID:tokenID
-        }
-      
-      return res.status(200).send({success: true, message: "LIVE CONTRACT DEPLOYED SUCCESSFULLY",data:data});
-      
-      }
-      
-      
-      catch (error) {
-          return res.status(400).send({success: false, message: error.message});
-      }
+app.post("/launchContract", async (req, res) => {
+  try {
+
+    const name = req.body.name;
+    const symbol = req.body.symbol;
+    // const maxsupply = req.body.maxSupply;
+
+
+    const nftPriceInHbar = new Hbar(1);
+    // const amountToMint = 1;
+
+
+    const defaultNonFungibleTokenFeatures = {
+      decimals: 0,
+      initialSupply: 0,
+      keys: {
+        kyc: null
+      },
+      maxSupply: 1000,
+      name: name,
+      supplyType: TokenSupplyType.Finite,
+      symbol: symbol,
+      type: TokenTypes.NonFungibleUnique,
+    };
+    console.log(defaultNonFungibleTokenFeatures)
+
+
+    // Initialize the session
+    const { session } = await ApiSession.default();
+
+    // Create the CreatableEntities and the UploadableEntities
+
+    const token = new Token(defaultNonFungibleTokenFeatures);
+
+    const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
+
+    const liveToken = await session.create(token);
+
+    const liveContract = await session.upload(
+      contract,
+      { _contract: { gas: 200_000 } },
+      liveToken,
+      session,
+      nftPriceInHbar._valueInTinybar
+
+    );
+
+    // Assign supply control of the token to the live contract
+    liveToken.assignSupplyControlTo(liveContract);
+
+    const contractInfo = await liveContract.getLiveEntityInfo();
+
+    // console.log(`HBar balance of contract: ${contractInfo.balance.toBigNumber().toNumber()}`);
+    const livetokenInfo = await liveToken.getLiveEntityInfo();
+
+    const contractID = await liveContract.id.toString();
+    const tokenID = await liveToken.id.toString();
+
+    const abi = contract.interface;
+
+    const docRef = {
+      contractID: contractID,
+      tokenID: tokenID,
+      // abi:JSON.parse(JSON.stringify(abi)),
+      msg: "LIVE CONTRACT DEPLOYED SUCCESSFULLY"
+    };
+    admin.firestore().collection('livecontracts').add(docRef);
+
+    const data = {
+      contractID: contractID,
+      tokenID: tokenID
+    }
+
+    return res.status(200).send({ success: true, message: "LIVE CONTRACT DEPLOYED SUCCESSFULLY", data: data });
+
+  }
+
+  catch (error) {
+    return res.status(400).send({ success: false, message: error.message });
+  }
 });
-  
-  
+
+
 app.post("/mintNFT", async (req, res) => { 
-  try{
+    try{
 
       const contractId = req.body.contractID;
       const toAccount = req.body.toaccount;
@@ -531,6 +503,9 @@ app.post("/mintNFT", async (req, res) => {
         client = Client.forMainnet().setOperator(operatorId, operatorKey);
        
       }
+
+      
+      
       
       let associateTx = await new AccountUpdateTransaction()
       .setAccountId(accId)
@@ -586,13 +561,7 @@ app.post("/mintNFT", async (req, res) => {
     }
 catch (error) {
     return res.status(400).send({success: false, message: error.message});
-
-  }
-});
-
-  
-app.listen(port, ()=> {
-  console.log('Server is up on port ' + port)
+}
 });
 
 app.post("/transferNFT", async (req, res) => { 
@@ -631,9 +600,9 @@ app.post("/transferNFT", async (req, res) => {
   }
   catch (error) {
           return res.status(400).send({success: false, message: error.message});
-      
       }
   });
+
 
 async function makeBytes(trans, signingAcctId) {
   let transId = TransactionId.generate(signingAcctId);
@@ -644,163 +613,165 @@ async function makeBytes(trans, signingAcctId) {
   return transBytes;
 }
 const getCurrentTokenBalanceForUserId = async (userId) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const document = await firestore.collection("users").doc(userId).get();
-            const user = document.data();
-            const tokenBalance = user.token_balance ? user.token_balance : 0;
-            if (isNaN(tokenBalance)) {
-                return resolve(0);
-            } else {
-                return resolve(tokenBalance);
-            }
-        } catch (error) {
-            return reject(error);
-        }
-    });
+  return new Promise(async (resolve, reject) => {
+    try {
+      const document = await firestore.collection("users").doc(userId).get();
+      const user = document.data();
+      const tokenBalance = user.token_balance ? user.token_balance : 0;
+      if (isNaN(tokenBalance)) {
+        return resolve(0);
+      } else {
+        return resolve(tokenBalance);
+      }
+    } catch (error) {
+      return reject(error);
+    }
+  });
 };
 
-async function createBilling(userid,hbarAmount,tokenamount) {
+async function createBilling(userid, hbarAmount, tokenamount) {
 
-        const userId = userid;
-        const service = kAppleIAPService;
-        const productId = "com.tstarship.fontana.tokens.4";
-        const purchaseId = Date().now;
-        const quantity = tokenamount;
-        var transactionDate = new Date();
-        const priceValue = hbarAmount;
-        const priceCurrency = "HBAR";
-        const environment = "server";
+  const userId = userid;
+  const service = kAppleIAPService;
+  const productId = "com.tstarship.fontana.tokens.4";
+  const purchaseId = Date().now;
+  const quantity = tokenamount;
+  var transactionDate = new Date();
+  const priceValue = hbarAmount;
+  const priceCurrency = "HBAR";
+  const environment = "server";
 
-      
-        var amount = quantity;
-       
-            const batch = firestore.batch();
-            const billingLogRef = firestore.collection("billing_logs").doc();
-            var billingLog = {
-                user_id: userId,
-                service,
-                product_id: productId,
-                purchase_id: purchaseId,
-                quantity,
-                transaction_date: transactionDate,
-                price_value: priceValue,
-                price_currency: priceCurrency,
-                environment: environment,
-            };
-            batch.set(billingLogRef, billingLog);
+  
 
-            const creationDate = new Date(transactionDate);
-            var expirationDate = new Date(transactionDate);
-            expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+  var amount = quantity;
+  
+  const batch = firestore.batch();
+  const billingLogRef = firestore.collection("billing_logs").doc();
+  var billingLog = {
+    user_id: userId,
+    service,
+    product_id: productId,
+    purchase_id: purchaseId,
+    quantity,
+    transaction_date: transactionDate,
+    price_value: priceValue,
+    price_currency: priceCurrency,
+    environment: environment,
+  };
+  batch.set(billingLogRef, billingLog);
 
-            const tokenCreationRef = firestore.collection("token_creation_logs").doc();
-            var tokenCreation = {
-                user_id: userId,
-                source: "purchased",
-                amount: amount,
-                creation_date: creationDate,
-                expiration_date: expirationDate,
-                price_value: priceValue,
-                price_currency: priceCurrency,
-            };
-            batch.set(tokenCreationRef, tokenCreation);
+  const creationDate = new Date(transactionDate);
+  var expirationDate = new Date(transactionDate);
+  expirationDate.setFullYear(expirationDate.getFullYear() + 1);
 
-            const tokenCreationId = tokenCreationRef.id;
-            const currentUserTokenBalance = await getCurrentTokenBalanceForUserId(userId);
-            //const newTokenBalance = currentUserTokenBalance + amount;
-            const newTokenBalance = Number(currentUserTokenBalance) + Number(amount);
-            var claims = null;
-            if (currentUserTokenBalance < 0) {
-                const claimsToUpdate = Math.abs(currentUserTokenBalance);
-                const claimsSnapshot = await firestore.collection("claims").where("token_id", "==", null)
-                    .where("user_id", "==", userId).limit(claimsToUpdate).get();
-                claims = claimsSnapshot.docs;
-            }
+  const tokenCreationRef = firestore.collection("token_creation_logs").doc();
+  var tokenCreation = {
+    user_id: userId,
+    source: "purchased",
+    amount: amount,
+    creation_date: creationDate,
+    expiration_date: expirationDate,
+    price_value: priceValue,
+    price_currency: priceCurrency,
+  };
+  batch.set(tokenCreationRef, tokenCreation);
 
-            for (var i = 0; i < amount; i++) {
-                const individualTokenRef = firestore.collection("tokens").doc();
-                var individualToken = {
-                    creation_id: tokenCreationId,
-                    user_id: userId,
-                    source: tokenCreation.source,
-                    creation_date: creationDate,
-                    expiration_date: expirationDate,
-                };
-                if (newTokenBalance > i) {
-                    individualToken.status = "available";
-                    individualToken.status_reason = "unused";
-                } else {
-                    const dispositionDate = new Date();
-                    individualToken.status = "unavailable";
-                    individualToken.status_reason = "negative-balance";
-                    individualToken.disposition_date = dispositionDate;
+  const tokenCreationId = tokenCreationRef.id;
+  const currentUserTokenBalance = await getCurrentTokenBalanceForUserId(userId);
+  //const newTokenBalance = currentUserTokenBalance + amount;
+  const newTokenBalance = Number(currentUserTokenBalance) + Number(amount);
+  var claims = null;
+  if (currentUserTokenBalance < 0) {
+    const claimsToUpdate = Math.abs(currentUserTokenBalance);
+    const claimsSnapshot = await firestore.collection("claims").where("token_id", "==", null)
+      .where("user_id", "==", userId).limit(claimsToUpdate).get();
+    claims = claimsSnapshot.docs;
+  }
 
-                    if (claims !== null && claims.length > 0) {
-                        const claim = claims[0];
-                        var claimData = claim.data();
-                        claimData.token_id = individualTokenRef.id;
-                        claimData.disposition_date = dispositionDate;
-                        claimData.status = "passed";
-                        const claimRef = firestore.collection("claims").doc(claim.id);
-                        batch.update(claimRef, claimData);
-                        claims.shift();
-                    }
-                }
-                batch.set(individualTokenRef, individualToken);
-            }
+  for (var i = 0; i < amount; i++) {
+    const individualTokenRef = firestore.collection("tokens").doc();
+    var individualToken = {
+      creation_id: tokenCreationId,
+      user_id: userId,
+      source: tokenCreation.source,
+      creation_date: creationDate,
+      expiration_date: expirationDate,
+    };
+    if (newTokenBalance > i) {
+      individualToken.status = "available";
+      individualToken.status_reason = "unused";
+    } else {
+      const dispositionDate = new Date();
+      individualToken.status = "unavailable";
+      individualToken.status_reason = "negative-balance";
+      individualToken.disposition_date = dispositionDate;
 
-            const userRef = firestore.collection("users").doc(userId);
-            batch.update(userRef, {token_balance: newTokenBalance});
+      if (claims !== null && claims.length > 0) {
+        const claim = claims[0];
+        var claimData = claim.data();
+        claimData.token_id = individualTokenRef.id;
+        claimData.disposition_date = dispositionDate;
+        claimData.status = "passed";
+        const claimRef = firestore.collection("claims").doc(claim.id);
+        batch.update(claimRef, claimData);
+        claims.shift();
+      }
+    }
+    batch.set(individualTokenRef, individualToken);
+  }
 
-            await batch.commit();
-            billingLog.id = billingLogRef.id;
-    
-    } 
+  const userRef = firestore.collection("users").doc(userId);
+  batch.update(userRef, { token_balance: newTokenBalance });
 
-async function payRoyalty(userid, hbaramount, tokenamount,network) {
+  await batch.commit();
+  billingLog.id = billingLogRef.id;
+  
 
-        let myAccountId;
-        let myPrivateKey;
-        let auroraAccountId;
-        if (network === 'testnet')
-        {
-          myAccountId = myAccountIdTestnet
-          myPrivateKey = myPrivateKeyTestnet
-          auroraAccountId = auroraAccountIdTestnet
+}
 
-          client = Client.forTestnet();
-          client.setOperator(myAccountId, myPrivateKey);
-        }
-        else
-        {
-          myAccountId = myAccountIdMainnet
-          myPrivateKey = myPrivateKeyMainnet
-          auroraAccountId = auroraAccountIdMainnet
+async function payRoyalty(userid, hbaramount, tokenamount, network) {
 
-          client = Client.forMainnet();
-          client.setOperator(myAccountId, myPrivateKey);
-        }
+  let myAccountId;
+  let myPrivateKey;
+  let auroraAccountId;
+  if (network === 'testnet') {
+    myAccountId = myAccountIdTestnet
+    myPrivateKey = myPrivateKeyTestnet
+    auroraAccountId = auroraAccountIdTestnet
 
-        console.log("myAccountId: ", myAccountId);
-        console.log("myPrivateKey: ", myPrivateKey);
-        console.log("auroraAccountId: ", auroraAccountId);
+    client = Client.forTestnet();
+    client.setOperator(myAccountId, myPrivateKey);
+  }
+  else {
+    myAccountId = myAccountIdMainnet
+    myPrivateKey = myPrivateKeyMainnet
+    auroraAccountId = auroraAccountIdMainnet
 
-        // Create a transaction to transfer the royalty to the NFT Creator in hbars
-        const transaction = new TransferTransaction()
-        .addHbarTransfer(myAccountId, new Hbar(-tenPercentRoyalty))
-        .addHbarTransfer(auroraAccountId, new Hbar(tenPercentRoyalty))
-        .setTransactionMemo("Royalty paid to Aurora Project from NFT Fan App"); //Set the node ID to submit the transaction to
+    client = Client.forMainnet();
+    client.setOperator(myAccountId, myPrivateKey);
+  }
 
-    
-        //Submit the transaction to a Hedera network
-        const txResponse = await transaction.execute(client);
+  console.log("myAccountId: ", myAccountId);
+  console.log("myPrivateKey: ", myPrivateKey);
+  console.log("auroraAccountId: ", auroraAccountId);
 
-        //Request the receipt of the transaction
-        const transReceipt = await txResponse.getReceipt(client);
+  // Create a transaction to transfer the royalty to the NFT Creator in hbars
+  const transaction = new TransferTransaction()
+  .addHbarTransfer(myAccountId, new Hbar(-tenPercentRoyalty))
+  .addHbarTransfer(auroraAccountId, new Hbar(tenPercentRoyalty))
+  .setTransactionMemo("Royalty paid to Aurora Project from NFT Fan App"); //Set the node ID to submit the transaction to
 
-        //Get the transaction consensus status
-        const transactionStatus = transReceipt.status;
+ 
+  //Submit the transaction to a Hedera network
+  const txResponse = await transaction.execute(client);
 
-        console.log("The transaction consensus status is " +transactionStatus.toString());
+  //Request the receipt of the transaction
+  const transReceipt = await txResponse.getReceipt(client);
+
+  //Get the transaction consensus status
+  const transactionStatus = transReceipt.status;
+
+  console.log("The transaction consensus status is " +transactionStatus.toString());
+
+
 }
