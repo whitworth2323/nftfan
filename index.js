@@ -6,17 +6,6 @@ const axios= require('axios');
 import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore"; 
 const { Account, ApiSession, Contract, Token, TokenTypes} =  require('@buidlerlabs/hedera-strato-js');
 
-//temporary holding of firebase config. Will also be moved to an .env soon
-const firebaseConfig = {
-  apiKey: "AIzaSyCbtN40-kMGciSa0b0lpnA7X-mftz6kWQk",
-  authDomain: "nft-fan.firebaseapp.com",
-  projectId: "nft-fan",
-  storageBucket: "nft-fan.appspot.com",
-  messagingSenderId: "177230626920",
-  appId: "1:177230626920:web:20d46981745ef127c77bdd",
-  measurementId: "G-EHF4SQXNSY"
-};
-    
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -46,17 +35,19 @@ app.use(cors());
 app.use(express.urlencoded( {extended: true} ))
 
 //temporary holding variables for Owner Testnet and Mainnet (will be moved to .env variable soon)
-const toAccTestnet    = "0.0.467126";
-const toAccountMainnet= "0.0.467121";
+const toAccTestnet    = process.env.MY_ACCOUNT_ID;
+const toAccountMainnet= process.env.MY_ACCOUNT_ID_M;
 
 //setting Owner's wallet as Client (for sending transactions, NFTs, and royalties)
 const myAccountIdTestnet = process.env.MY_ACCOUNT_ID;
 const myPrivateKeyTestnet = process.env.MY_PRIVATE_KEY;
 const auroraAccountIdTestnet = process.env.AURORA_ID;
+const operatorIdTestnet = process.env.HEDERAS_OPERATOR_ID;
 
-const myAccountIdMainnet = process.env.MY_ACCOUNT_IDM;
-const myPrivateKeyMainnet = process.env.MY_PRIVATE_KEYM;
-const auroraAccountIdMainnet = process.env.AURORA_IDM;
+const myAccountIdMainnet = process.env.MY_ACCOUNT_ID_M;
+const myPrivateKeyMainnet = process.env.MY_PRIVATE_KEY_M;
+const auroraAccountIdMainnet = process.env.AURORA_ID_M;
+const operatorIdMainnet = process.env.HEDERAS_OPERATOR_ID_M;
 
 let client = Client.forTestnet();
 client.setOperator(myAccountIdTestnet, myPrivateKeyTestnet);
@@ -91,7 +82,7 @@ app.get('/', async (req, res) => {
 });
 const kPurchase1Token = ".tokens.1";
 const kPurchase4Token = ".tokens.4";
-const kAppleIAPService = "apple-iap";
+const kAppleIAPService = "hbar";
 const kAndroidIAPService = "android-iap";
 
 
@@ -200,7 +191,6 @@ app.post("/sendTransaction", async (req, res) => {
     {
     try {
       
-      //console.Log("response: ", response);
       if(response.success === true){
 
         // transaction Completed
@@ -295,9 +285,6 @@ app.post("/sendTransaction", async (req, res) => {
   }*/
 });
 
-app.listen(port, ()=> {
-    console.log('Server is up on port ' + port)
-});
 
 //initial QR verficiation function
 app.post("/getMetadata", async (req, res) => {
@@ -406,14 +393,16 @@ app.post("/getMetadata", async (req, res) => {
   }
 });
 
+
 app.post("/launchContract", async (req, res) => { 
   try{
     
       const name = req.body.name;
       const symbol = req.body.symbol;
-      // const maxsupply = req.body.maxSupply;  
+  
   
       const nftPriceInHbar = new Hbar(10);
+      
       
       const defaultNonFungibleTokenFeatures = {
           decimals: 0,
@@ -433,6 +422,7 @@ app.post("/launchContract", async (req, res) => {
       const { session } = await ApiSession.default();
       
       // Create the CreatableEntities and the UploadableEntities
+      
       
       const token = new Token(defaultNonFungibleTokenFeatures);
       
@@ -479,60 +469,68 @@ app.post("/launchContract", async (req, res) => {
         }
       
       return res.status(200).send({success: true, message: "LIVE CONTRACT DEPLOYED SUCCESSFULLY",data:data});
-  
-  }
-  
-  
-  catch (error) {
-      return res.status(400).send({success: false, message: error.message});
-  }
-  });
+      
+      }
+      
+      
+      catch (error) {
+          return res.status(400).send({success: false, message: error.message});
+      }
+});
   
   
 app.post("/mintNFT", async (req, res) => { 
-    try{
+  try{
 
-        const contractId = req.body.contractID;
-        const toAccount = req.body.toaccount;
-        const toPrivateKey = req.body.privatekey;
-        const amountToMint = req.body.amountmint;
-        const metadata = req.body.metadata;
+      const contractId = req.body.contractID;
+      const toAccount = req.body.toaccount;
+      const toPrivateKey = req.body.privatekey;
+      const amountToMint = req.body.amountmint;
+      const metadata = req.body.metadata;
+      const network = req.body.network;
 
-        let contractData;
-        const ans = await admin.firestore().collection('livecontracts').where('contractID','==',contractId)
-        .get().then(querySnapshot => {
+      let contractData;
+      const ans = await admin.firestore().collection('livecontracts').where('contractID','==',contractId)
+      .get().then(querySnapshot => {
             querySnapshot.forEach(doc => {
             contractData = doc.data();             
           })
-        })
-        .catch(err => console.log(err.message))
-        
-
-      const accId = AccountId.fromString(toAccount);
-      const singsKey = PrivateKey.fromString(toPrivateKey);
+      })
+      .catch(err => console.log(err.message))
+      
+      let accId = AccountId.fromString(toAccount);
+      let singsKey = PrivateKey.fromString(toPrivateKey);
       let toMintAccount = AccountId.fromString(toAccount).toSolidityAddress();
       
-      
-      const nftPriceInHbar = new Hbar(10);
+      //we will always mint new subNFTs as 1 HBAR
+      const nftPriceInHbar = new Hbar(1);
               
       // const account = new Account({ maxAutomaticTokenAssociations: 10});
       
       // Initialize the session
       const { session } = await ApiSession.default();
-      
-      
-      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
-      
-      
+      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });  
       const liveContract = await session.getLiveContract({ id:contractData.contractID , abi: contract.interface});
       
       
-      const operatorId = AccountId.fromString(process.env.HEDERAS_OPERATOR_ID);
-      const operatorKey = PrivateKey.fromString(process.env.HEDERAS_OPERATOR_KEY);
+      let operatorId = AccountId.fromString(process.env.HEDERAS_OPERATOR_ID);
+      let operatorKey = PrivateKey.fromString(process.env.HEDERAS_OPERATOR_KEY);
       
       // Call the Solidity mint function
-      const client = Client.forTestnet().setOperator(operatorId, operatorKey);
-      
+
+
+      if (network === 'testnet')
+      {
+        
+        client = Client.forTestnet().setOperator(operatorId, operatorKey);
+      }
+      else
+      {
+        operatorId = AccountId.fromString(process.env.HEDERAS_OPERATOR_ID_M);
+        operatorKey = PrivateKey.fromString(process.env.HEDERAS_OPERATOR_KEY_M);
+        client = Client.forMainnet().setOperator(operatorId, operatorKey);
+       
+      }
       
       let associateTx = await new AccountUpdateTransaction()
       .setAccountId(accId)
@@ -588,8 +586,54 @@ app.post("/mintNFT", async (req, res) => {
     }
 catch (error) {
     return res.status(400).send({success: false, message: error.message});
-}
+
+  }
 });
+
+  
+app.listen(port, ()=> {
+  console.log('Server is up on port ' + port)
+});
+
+app.post("/transferNFT", async (req, res) => { 
+  try
+  {
+      
+    const tokenId = req.body.tokenID;
+    const serialNo = req.body.serial;
+    const network = req.body.network;
+    const account = req.body.toAccount;
+
+    let treasuryId = myAccountIdTestnet;
+    let treasuryKey = myPrivateKeyTestnet;
+
+    if (network === "testnet")
+    {
+      client = Client.forTestnet().setOperator(operatorId, operatorKey);
+
+    }
+    else
+    {
+      treasuryId = myAccountIdMainnet;
+      treasuryKey = myPrivateKeyMainnet;
+      client = Client.forMainnet().setOperator(operatorId, operatorKey);
+    }
+
+    let tokenTransferTx = await new TransferTransaction()
+      .addNftTransfer(tokenId, serialNo, treasuryId, account)
+      .freezeWith(client)
+      .sign(treasuryKey);
+    let tokenTransferSubmit = await tokenTransferTx.execute(client);
+    let tokenTransferRx = await tokenTransferSubmit.getReceipt(client);
+    console.log(`\n NFT transfer Treasury->${account} status: ${tokenTransferRx.status} \n`); 
+  
+    return res.status(200).send({success: true, message: `\n NFT transfer Treasury->${account} status: ${tokenTransferRx.status} \n`});
+  }
+  catch (error) {
+          return res.status(400).send({success: false, message: error.message});
+      
+      }
+  });
 
 async function makeBytes(trans, signingAcctId) {
   let transId = TransactionId.generate(signingAcctId);
@@ -616,16 +660,6 @@ const getCurrentTokenBalanceForUserId = async (userId) => {
     });
 };
 
-async function purchaseTokens(userid, hbaramount,tokenamount) {
-
-    const userId = userid;
-    const HBARamount = hbaramount;
-    const amount = tokenamount;
-
-
-
-}
-
 async function createBilling(userid,hbarAmount,tokenamount) {
 
         const userId = userid;
@@ -638,49 +672,9 @@ async function createBilling(userid,hbarAmount,tokenamount) {
         const priceCurrency = "HBAR";
         const environment = "server";
 
-        /*if (!userId || !service || !productId || !purchaseId || !quantity || !transactionDate || !priceValue || !priceCurrency || !environment) {
-            throw new Error("Missing fields. Expected fields: user_id, service, product_id, purchase_id, quantity, transanction_date, price_value, price_currency, environment.");
-        }
-
-        if (service !== kAppleIAPService && service !== kAndroidIAPService) {
-            throw new Error("No valid service.");
-        }
-
-        if (isNaN(priceValue)) {
-            throw new Error("No valid price value. A number is expected.");
-        }
-
-        if (isNaN(quantity)) {
-            throw new Error("No valid quantity. A number is expected.");
-        }
-
-        transactionDate = new Date(transactionDate);
-        if (isNaN(transactionDate)) {
-            throw new Error("No valid transaction date.");
-        }*/
-
+      
         var amount = quantity;
-       /* if (productId.includes(kPurchase1Token)) {
-            amount = 1;
-        } else if (productId.includes(kPurchase4Token)) {
-            amount = 4;
-        }
-        if (amount === 0) {
-            throw new Error("Unknown product identifier.");
-        }*/
-
-       // const billingLogsSnapshot = await firestore.collection("billing_logs").where("service", "==", service)
-        //    .where("purchase_id", "==", purchaseId).where("transaction_date", "==", transactionDate)
-        //    .where("product_id", "==", productId).get();
-        //if (billingLogsSnapshot.docs.length > 0) {
-            //var exisitingBillingLog = billingLogsSnapshot.docs[0].data();
-           // exisitingBillingLog.id = billingLogsSnapshot.docs[0].id;
-           /* if (exisitingBillingLog.user_id === userId) {
-                return res.status(200).send({success: true, data: exisitingBillingLog, message: "Billing log already saved"});
-            } else {
-                throw new Error("This purchase is associated with another user.");
-            }*/
-       // } else {
+       
             const batch = firestore.batch();
             const billingLogRef = firestore.collection("billing_logs").doc();
             var billingLog = {
@@ -761,8 +755,6 @@ async function createBilling(userid,hbarAmount,tokenamount) {
 
             await batch.commit();
             billingLog.id = billingLogRef.id;
-            //return res.status(200).send({success: true, data: billingLog});
-       // }
     
     } 
 
@@ -795,7 +787,7 @@ async function payRoyalty(userid, hbaramount, tokenamount,network) {
         console.log("auroraAccountId: ", auroraAccountId);
 
         // Create a transaction to transfer the royalty to the NFT Creator in hbars
-        /*const transaction = new TransferTransaction()
+        const transaction = new TransferTransaction()
         .addHbarTransfer(myAccountId, new Hbar(-tenPercentRoyalty))
         .addHbarTransfer(auroraAccountId, new Hbar(tenPercentRoyalty))
         .setTransactionMemo("Royalty paid to Aurora Project from NFT Fan App"); //Set the node ID to submit the transaction to
@@ -811,109 +803,4 @@ async function payRoyalty(userid, hbaramount, tokenamount,network) {
         const transactionStatus = transReceipt.status;
 
         console.log("The transaction consensus status is " +transactionStatus.toString());
-*/
-
-}
-
-//initial credit token fucnction to immediately credit tokens on Firebase
-//Need to update this to mark as "Purchased" tokens, not credited
-async function creditTokens(userid, hbaramount, tokenamount) {
-    //const transactionResponse = transResponse;
-
-
-    const batch = firestore.batch();
-    //console.log("batch:", batch);
-    //const pushMessagesRef = firestore.collection("pushmessages").doc();
-    const userId = userid;
-    const HBARamount = hbaramount;
-    const amount = tokenamount;
-
-     // console.log("passed HBARamount:", HBARamount);
-//console.log("passed tokenAmount:", amount);
-
-    if (!userId) {
-        console.log("transactionresponse missing userid");
-        return null;
-    }
-
-    if (isNaN(amount) || amount <= 0) {
-        console.log("transactionresponse missing tokenAmount");
-        return null;
-    }
-    const notificationDate = new Date();
-    const tag = "Wallet";
-
-
-  const creationDate = new Date();
-   var expirationDate = new Date();
-
-     expirationDate.setFullYear(creationDate.getFullYear() + 1);
-
-     const tokenCreationRef = firestore.collection("token_creation_logs").doc();
-     var tokenCreation = {
-         user_id: userId,
-         source: "credited",
-         amount: amount,
-         creation_date: creationDate,
-         expiration_date: expirationDate,
-         price_value: 0,
-         price_currency: "USD",
-     };
-     batch.set(tokenCreationRef, tokenCreation);
-
-     const tokenCreationId = tokenCreationRef.id;
-     const currentUserTokenBalance = await getCurrentTokenBalanceForUserId(userId);
-
-     // console.log("current token balance:", currentUserTokenBalance);
-      
-     var claims = null;
-     if (currentUserTokenBalance < 0) {
-         const claimsToUpdate = Math.abs(currentUserTokenBalance);
-         const claimsSnapshot = await firestore.collection("claims").where("token_id", "==", null)
-             .where("user_id", "==", userId).limit(claimsToUpdate).get();
-         claims = claimsSnapshot.docs;
-     }
-
-     const newTokenBalance = Number(currentUserTokenBalance) + Number(amount);
-     //console.log("new token balance 1:", newTokenBalance);
-     for (var i = 0; i < amount; i++) {
-          console.log("running: ", i);
-         const individualTokenRef = firestore.collection("tokens").doc();
-         var individualToken = {
-             creation_id: tokenCreationId,
-             source: tokenCreation.source,
-             creation_date: creationDate,
-             expiration_date: expirationDate,
-             user_id: userId,
-         };
-         if (newTokenBalance > i) {
-             individualToken.status = "available";
-             individualToken.status_reason = "unused";
-         } else {
-             const dispositionDate = new Date();
-             individualToken.status = "unavailable";
-             individualToken.status_reason = "negative-balance";
-             individualToken.disposition_date = dispositionDate;
-
-             if (claims !== null && claims.length > 0) {
-                 const claim = claims[0];
-                 var claimData = claim.data();
-                 claimData.token_id = individualTokenRef.id;
-                 claimData.disposition_date = dispositionDate;
-                 claimData.status = "passed";
-                 const claimRef = firestore.collection("claims").doc(claim.id);
-                 batch.update(claimRef, claimData);
-                 claims.shift();
-             }
-         }
-         batch.set(individualTokenRef, individualToken);
-     }
-
-     //console.log("new token balance 2:", newTokenBalance);
-      
-     const userRef = firestore.collection("users").doc(userId);
-     batch.update(userRef, {token_balance: newTokenBalance});
-
-      console.log("userID:", userId);
-        await batch.commit();
 }
