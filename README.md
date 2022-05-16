@@ -9,7 +9,7 @@
   <h3 align="center">NFT Fan Club for Hedera: Aurora Project</h3>
 
   <p align="center">
-    An Apple App Store app that hosts auctions for subNFTs which are physical items, such as coffee mugs, incorporating NFT artwork. This provides an additional income stream for NFT creators and owners.
+    An Apple App Store app for the 2022 Hedera Hackathon that hosts auctions for subNFTs which are physical items, such as coffee mugs, incorporating NFT artwork. This provides an additional income stream for NFT creators and owners.
     <br /><br />
     This project is the backend server for our Apple App Store app which interacts with the Hedera HashGraph and uses Smart Contracts.
     <br /><br />
@@ -24,8 +24,8 @@
   <br />
 
   </div>
-  <!-- ABOUT THE PROJECT -->
-  ## About The Project
+
+### About The Project
 
 
 
@@ -38,8 +38,8 @@
   Our project allow creation and authentication of physical limited edition collections of promotional merchandizing items such as coffee mugs and mouse pads. These merchandise items are derivative works of an underlying NFT artwork collection, and are herein defined as subNFTs. 
 
   A subNFT has two components: 
-  1) a physical item with a secret private key embedded in a visibly printed QR code on the item, and 
-  2) an NFT minted by the club owner with the symbol “COA” which is transferred to the member’s HashPack wallet with the name “Certificate of Authenticity.” 
+  * a physical item with a secret private key embedded in a visibly printed QR code on the item, and 
+  * an NFT minted by the club owner with the symbol “COA” which is transferred to the member’s HashPack wallet with the name “Certificate of Authenticity.” 
 
   <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -55,11 +55,85 @@
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Solidity Files
 
-<!-- Main Features -->
+We have two Solidity files we are submitting for this project: 
+`/contracts/NFTFan.sol` and `/contracts/PayRoyalty.sol`
+
+`NFTFan.sol` handles minting our "Certificate of Authenticty" token for the subNFTs as well as the metadata for the actual minted NFT which contains the second part of the subNFT (public key of the Hedera account on the subNFT merchandise).
+
+Token Constructor:
+  ```solidity
+  constructor(
+          address _tokenAddress,
+          address _tokenTreasury,
+          uint64 _mintPrice
+          // bytes memory _metadata
+      ) {
+          tokenAddress = _tokenAddress;
+          tokenTreasury = _tokenTreasury;
+          mintPrice = _mintPrice;
+          // metadata = _metadata;
+      }
+  ```
+Minting:
+  ```solidity
+  function mint(address to, uint256 amount,bytes memory _metadata)
+        external
+        payable
+        isPaymentCovered(amount)
+        returns (int64[] memory)
+    {
+        metadata = _metadata;
+        bytes[] memory nftMetadatas = generateBytesArrayForHTS(
+            metadata,
+            amount
+        );
+
+        (bool success, bytes memory result) = precompileAddress.call(
+            abi.encodeWithSelector(
+                IHederaTokenService.mintToken.selector,
+                tokenAddress,
+                0,
+                nftMetadatas
+            )
+        );
+        (int32 responseCode, , int64[] memory serialNumbers) = success
+            ? abi.decode(result, (int32, uint64, int64[]))
+            : (HederaResponseCodes.UNKNOWN, 0, new int64[](0));
+
+        if (responseCode != HederaResponseCodes.SUCCESS) {
+            revert MintError(responseCode);
+        }
+  ```
+
+`PayRoyalty.sol` handles paying royalty to the NFT Creator (in this case the Aurora Project) for each HBAR transaction that takes place in our app when purchasing the internal Comm Token. Each Comm Token is worth $4.99 and can be purchased either via in-app purchase or HBAR from a user's paired HashPack wallet. We calculate in realtime the amount of HBAR needed for each Comm Token which are $4.99 in HBAR and allow the user to complete this transaction. If it is successful, we pay from our treasury 10% of the HBAR amount to the NFT Creator via this Smart Contract. 
+
+Transferring HBAR royalty:
+  ```solidity
+  contract TransferringContract {
+    uint public amount;
+
+    constructor() {
+        amount = 10;
+    }
+
+    function transferToAddress(address _address, uint256 _amount) public payable {
+        payable(_address).transfer(_amount);
+    }
+
+    function transferToCaller(uint256 _amount) public payable {
+        payable(msg.sender).transfer(_amount);
+    }
+
+  }
+  ```
+
+
+
 ## Main Features
 
-These are the main functions and endpoints that are possible with this backend working alongside our mobile app in the Apple App Store. 
+These are the main functions and endpoints that are possible with our backend Node server working alongside our mobile app in the Apple App Store. 
 
 * Get Pairing Code and Pair with HashPack Wallet
    ```js
