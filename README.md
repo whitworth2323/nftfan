@@ -66,7 +66,144 @@ These are the main functions and endpoints that are possible with this backend w
    app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
    ```
 
-  ![Alt Text](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2Fpairedwallet_small2.gif?alt=media&token=062f9d7d-180d-436e-b300-558e44d726ca)
+  ![](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2Fpairedwallet_small2.gif?alt=media&token=062f9d7d-180d-436e-b300-558e44d726ca)
+
+
+This allows you to receive a Pairing Code from the HashConnect SDK and use it in our mobile app to pair your HashPack wallet.
+
+* Send HBAR Transaction from HashPack Wallet 
+   ```js
+   app.post("/sendTransaction", async (req, res) => {
+   ```
+
+  ![](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2FsendHBAR.gif?alt=media&token=02448766-8a8b-49b1-bf23-294ab8c3ed95)
+
+
+This allows you to create a Transaction Request in your HashPack wallet for a specific HBAR amount equivalent to exactly 1 Comm Token. This amount is calculated in realtime based on the cost of $4.99 in HBAR because $4.99 is equal to 1 Comm Token in our mobile app.
+
+Notice in the above example from our app how it dynamically calculates the price in that very moment to acquire the Comm Token.
+
+* We handle royalty payments directly to the NFT Creators for each HBAR transaction made through our app when acquiring internal Comm Tokens. 
+    ```js
+    app.get('/payRoyalty', async (req, res) => {
+ 
+
+    ```
+
+This endpoint utilizes a Smart Contract to fulfill this transaction.
+  ```js
+    // Create the CreatableEntities and the UploadableEntities
+    const contractID = req.body.contractID;
+    const amountHBAR = req.body.amount;
+    const contract = await Contract.newFrom({ path: 'PayRoyalty.sol' });
+   ```
 
 
 
+* This allow us to verify a subNFT if it is authentic and is in the paired HashPack wallet.
+   ```js
+   app.post("/getMetadata", async (req, res) => {
+   ```
+
+  ![](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2FverifysubNFT.gif?alt=media&token=182b11d3-1ec9-419e-803a-443b6c8bf664)
+
+This allows you to verify a specific subNFT to see if it is authentic. In the example above you can see we scan the QR code on the merchandise, then query a mirrornode on the Hedera Hashgraph to look up the metadata of the minted "Certificate of Authenticity" for the physical merchandise to see if it is authentic and if the currently paired HashPack wallet contains it. 
+
+* Launch our Smart Contract which mints a Certificate of Authenticity token for our subNFTs.
+    ```js
+    app.post("/launchContract", async (req, res) => {
+
+    ```
+
+We configure and then deploy our Solidity contract onto the network:
+  ```js
+    // Create the CreatableEntities and the UploadableEntities
+
+    const token = new Token(defaultNonFungibleTokenFeatures);
+
+    const contract = await Contract.newFrom({ path: 'NFTFan.sol' });
+
+    const liveToken = await session.create(token);
+
+    const liveContract = await session.upload(
+      contract,
+      { _contract: { gas: 200_000 } },
+      liveToken,
+      session,
+      nftPriceInHbar._valueInTinybar
+
+    );
+    ```
+
+* Use our previously launched contract to mint our NFT which will contain metadata for the Hedera 
+Accounts on our corresponding subNFT merchandise.
+    ```js
+    app.post("/mintNFT", async (req, res) => {
+
+    ```
+
+We find the contract using our Firebase backend and then mint the NFT:
+  ```js
+     let contractData;
+      const ans = await admin.firestore().collection('livecontracts').where('contractID','==',contractId)
+      .get().then(querySnapshot => {
+            querySnapshot.forEach(doc => {
+            contractData = doc.data();             
+          })
+      })
+      .catch(err => console.log(err.message))
+    ```
+
+* This allows us to transfer the "Certificate of Authenticty" token of the subNFT to the winner of a specific subNFT auction.
+    ```js
+    app.post("/transferNFT", async (req, res) => { 
+
+    ```
+
+These always come from our original treasury and then are passed to the user on their paired HashPack wallet:
+  ```js
+     let tokenTransferTx = await new TransferTransaction()
+      .addNftTransfer(tokenId, serialNo, treasuryId, account)
+      .freezeWith(client)
+      .sign(treasuryKey);
+    let tokenTransferSubmit = await tokenTransferTx.execute(client);
+    let tokenTransferRx = await tokenTransferSubmit.getReceipt(client);
+    ```
+
+* This function allows us to create unique billing logs when doing HBAR transfers and keep a history of it on our Firebase backend.
+    ```js
+    async function createBilling(userid, hbarAmount, tokenamount) {
+
+    ```
+
+We use this to credit the correct amount of Comm Tokens after they have been successfully purchased via HBAR.
+  ```js
+  const billingLogRef = firestore.collection("billing_logs").doc();
+  var billingLog = {
+    user_id: userId,
+    service,
+    product_id: productId,
+    purchase_id: purchaseId,
+    quantity,
+    transaction_date: transactionDate,
+    price_value: priceValue,
+    price_currency: priceCurrency,
+    environment: environment,
+  };
+  batch.set(billingLogRef, billingLog);
+    ```
+
+We also create a reference of the Comm Token specifically that was purchased and log it into our Firebase backend:
+  ```js
+  const tokenCreationRef = firestore.collection("token_creation_logs").doc();
+  var tokenCreation = {
+    user_id: userId,
+    source: "purchased",
+    amount: amount,
+    creation_date: creationDate,
+    expiration_date: expirationDate,
+    price_value: priceValue,
+    price_currency: priceCurrency,
+  };
+  batch.set(tokenCreationRef, tokenCreation);
+    ```
