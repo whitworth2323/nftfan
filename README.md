@@ -161,11 +161,11 @@ Notice in the above example from our app how it dynamically calculates the price
 
 We handle royalty payments directly to the NFT Creators for each HBAR transaction made through our app when acquiring internal Comm Tokens. 
 
-    ```js
+  ```js
     app.get('/payRoyalty', async (req, res) => {
  
 
-    ```
+  ```
 
 This endpoint utilizes a Smart Contract to fulfill this transaction.
   ```js
