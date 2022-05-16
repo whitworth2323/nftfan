@@ -129,7 +129,7 @@ Transferring HBAR royalty:
   }
   ```
 
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Main Features
 
@@ -145,6 +145,8 @@ These are the main functions and endpoints that are possible with our backend No
 
 This allows you to receive a Pairing Code from the HashConnect SDK and use it in our mobile app to pair your HashPack wallet.
 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 * Send HBAR Transaction from HashPack Wallet.
    ```js
    app.post("/sendTransaction", async (req, res) => {
@@ -156,6 +158,8 @@ This allows you to receive a Pairing Code from the HashConnect SDK and use it in
 This allows you to create a Transaction Request in your HashPack wallet for a specific HBAR amount equivalent to exactly 1 Comm Token. This amount is calculated in realtime based on the cost of $4.99 in HBAR because $4.99 is equal to 1 Comm Token in our mobile app.
 
 Notice in the above example from our app how it dynamically calculates the price in that very moment to acquire the Comm Token.
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 * Pay Royalty to the NFT Creators.
 
@@ -175,7 +179,7 @@ This endpoint utilizes a Smart Contract to fulfill this transaction.
     const contract = await Contract.newFrom({ path: 'PayRoyalty.sol' });
    ```
 
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 * Verify subNFT Item of a specfic merchandise.
 
@@ -188,6 +192,8 @@ This allow us to verify a subNFT if it is authentic and in the paired HashPack w
   ![](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2FverifysubNFT.gif?alt=media&token=182b11d3-1ec9-419e-803a-443b6c8bf664)
 
 This allows you to verify a specific subNFT to see if it is authentic. In the example above you can see we scan the QR code on the merchandise, then query a mirrornode on the Hedera Hashgraph to look up the metadata of the minted "Certificate of Authenticity" for the physical merchandise to see if it is authentic and if the currently paired HashPack wallet contains it. 
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 * Launch Smart Contract (`NFTFan.sol`).
 
@@ -216,6 +222,9 @@ We configure and then deploy our Solidity contract onto the network:
     );
   ```
 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+
 * Mint NFT function from our Smart Contract (`NFTFan.sol`).
 
 Use our previously launched contract to mint our NFT which will contain metadata for the Hedera Accounts on our corresponding subNFT merchandise.
@@ -235,6 +244,9 @@ We find the contract using our Firebase backend and then mint the NFT:
       .catch(err => console.log(err.message))
   ```
 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+
 * Transfer NFT function for when a user acquires a subNFT.
 
 This allows us to transfer the "Certificate of Authenticty" token of the subNFT to the winner of a specific subNFT auction.
@@ -252,6 +264,9 @@ These always come from our original treasury and then are passed to the user on 
     let tokenTransferSubmit = await tokenTransferTx.execute(client);
     let tokenTransferRx = await tokenTransferSubmit.getReceipt(client);
   ```
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 
 * Create Billing function for HBAR Transfers.
 
@@ -292,3 +307,5 @@ We also create a reference of the Comm Token specifically that was purchased and
     };
     batch.set(tokenCreationRef, tokenCreation);
   ```
+
+<p align="right">(<a href="#top">back to top</a>)</p>
