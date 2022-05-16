@@ -66,7 +66,7 @@ These are the main functions and endpoints that are possible with this backend w
    app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
    ```
 
-  ![Alt Text](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2Fpairedwallet_small.gif?alt=media&token=874a17e4-e880-4cbd-bb50-13a40ae5a496)
+  ![Alt Text](https://firebasestorage.googleapis.com/v0/b/nft-fan.appspot.com/o/Files%2Fpairedwallet_small2.gif?alt=media&token=062f9d7d-180d-436e-b300-558e44d726ca)
 
 
 
