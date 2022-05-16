@@ -4,10 +4,8 @@ pragma solidity ^0.8.9;
 import "./hip-206/IHederaTokenService.sol";
 import "./hip-206/HederaResponseCodes.sol";
 
-// @title NFTShop - a simple minting and transferring contract
-// @author Buidler Labs
-// @dev The functions implemented make use of Hedera Token Service precompiled contract
-contract NFTShop is HederaResponseCodes {
+//Main Smart Contract based on example from BuilderLabs for Minting Token and Minting NFT
+contract NFTFan is HederaResponseCodes {
 
     // @dev Hedera Token Service precompiled address
     address constant precompileAddress = address(0x167);

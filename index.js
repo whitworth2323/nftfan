@@ -5,7 +5,7 @@ import { HashConnect } from 'hashconnect';
 import { initializeApp } from 'firebase/app';
 const axios = require('axios');
 import { doc, addDoc, getFirestore, collection, getDocs, setDoc, Timestamp } from "firebase/firestore";
-import { Account, ApiSession, Contract, Token, TokenTypes } from '@buidlerlabs/hedera-strato-js';
+import { Account, ApiSession, Contract, Token, TokenTypes, } from '@buidlerlabs/hedera-strato-js';
 
 //Firebase config
 const functions = require("firebase-functions");
@@ -126,7 +126,7 @@ app.post("/sendTransaction", async (req, res) => {
   const state = await hashconnect.connect(topic, walletmetadata);
   const trans = new TransferTransaction().setTransactionMemo(memo);
 
-  console.log("Walletmetadata: ", walletmetadata);
+    console.log("Walletmetadata: ", walletmetadata);
 
   const dataTransfer = {
     transfer: {
@@ -175,7 +175,7 @@ app.post("/sendTransaction", async (req, res) => {
           msg: "TRANSACTION COMPLETED"
         };
 
-        admin.firestore().collection('transactionresponses').add(docRef);
+          admin.firestore().collection('transactionresponses').add(docRef);
 
 
         //Add Comm Tokens to the User's balance
@@ -369,7 +369,7 @@ app.post("/launchContract", async (req, res) => {
 
     const token = new Token(defaultNonFungibleTokenFeatures);
 
-    const contract = await Contract.newFrom({ path: 'NFTShop.sol' });
+    const contract = await Contract.newFrom({ path: 'NFTFan.sol' });
 
     const liveToken = await session.create(token);
 
@@ -417,9 +417,39 @@ app.post("/launchContract", async (req, res) => {
   }
 });
 
-//Minting subNFTs on a live contract
-app.post("/mintNFT", async (req, res) => { 
-    try{
+//Run our Smart Contract to pay royalty based on the amount sent as HBAR to Aurora Project
+app.get('/payRoyalty', async (req, res) => {
+ 
+  // Initialize the session
+  const { session } = await ApiSession.default();
+
+  // Create the CreatableEntities and the UploadableEntities
+  const contractID = req.body.contractID;
+  const amountHBAR = req.body.amount;
+  const contract = await Contract.newFrom({ path: 'PayRoyalty.sol' });
+
+  const liveContract = await session.getLiveContract({ id: contractID, abi: contract.interface });
+
+  let toAccount = AccountId.fromString(auroraAccountIdTestnet).toSolidityAddress();
+
+  const myAmount = new Hbar(amountHBAR).toBigNumber().toNumber();
+  const tx = await liveContract.transferToAddress({amount: myAmount},
+    toAccount,
+    myAmount
+  );
+
+  const contractInfo = await liveContract.getLiveEntityInfo();
+  console.log(tx);
+  console.log(contractInfo);
+
+
+  console.log(`HBar balance of contract: ${ contractInfo.balance.toBigNumber().toNumber() }`);
+  res.status(200).send({ tx })
+})
+
+//Endpoint to mint a new NFT using the Smart Contract that we deployed
+app.post("/mintNFT", async (req, res) => {
+  try {
 
       const contractId = req.body.contractID;
       const toAccount = req.body.toaccount;
@@ -448,7 +478,7 @@ app.post("/mintNFT", async (req, res) => {
       
       // Initialize the session
       const { session } = await ApiSession.default();
-      const contract = await Contract.newFrom({ path: 'NFTShop.sol' });  
+      const contract = await Contract.newFrom({ path: 'NFTFan.sol' });  
       const liveContract = await session.getLiveContract({ id:contractData.contractID , abi: contract.interface});
       
       
@@ -571,6 +601,23 @@ app.post("/transferNFT", async (req, res) => {
       }
   });
 
+//Paying Royalty method using just HTS, not a Smart Contract (not being used anymore -- we use the Smart Contract)
+app.post('/payRoyalityFeeToAurora', (req, res) => {
+  try {
+    console.log(req.body)
+    const snap = req.body
+    const transactionResponse = snap;
+    const userID = transactionResponse.userID;
+    const HBARamount = transactionResponse.HBARamount;
+    const amount = transactionResponse.tokenAmount;
+    const network = transactionResponse.network;
+    console.log({ transactionResponse })
+    payRoyalty(userID, HBARamount, amount, network);
+    return res.status(200).send({ success: true, message: "success" });
+  } catch (err) {
+    return res.status(400).send({ success: false, message: err.message });
+  }
+})
 
 
 async function makeBytes(trans, signingAcctId) {
@@ -586,7 +633,8 @@ const getCurrentTokenBalanceForUserId = async (userId) => {
     try {
       const document = await firestore.collection("users").doc(userId).get();
       const user = document.data();
-      const tokenBalance = user.token_balance ? user.token_balance : 0;
+      console.log()
+      const tokenBalance = user && (user.token_balance || 0);
       if (isNaN(tokenBalance)) {
         return resolve(0);
       } else {
@@ -612,10 +660,10 @@ async function createBilling(userid, hbarAmount, tokenamount) {
   const priceCurrency = "HBAR";
   const environment = "server";
 
-  
+
 
   var amount = quantity;
-  
+
   const batch = firestore.batch();
   const billingLogRef = firestore.collection("billing_logs").doc();
   var billingLog = {
@@ -696,7 +744,7 @@ async function createBilling(userid, hbarAmount, tokenamount) {
 
   await batch.commit();
   billingLog.id = billingLogRef.id;
-  
+
 
 }
 
@@ -728,7 +776,7 @@ async function payRoyalty(userid, hbaramount, tokenamount, network) {
   .addHbarTransfer(auroraAccountId, new Hbar(tenPercentRoyalty))
   .setTransactionMemo("Royalty paid to Aurora Project from NFT Fan App"); //Set the node ID to submit the transaction to
 
- 
+
   //Submit the transaction to a Hedera network
   const txResponse = await transaction.execute(client);
 
