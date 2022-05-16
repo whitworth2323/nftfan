@@ -135,7 +135,7 @@ Transferring HBAR royalty:
 
 These are the main functions and endpoints that are possible with our backend Node server working alongside our mobile app in the Apple App Store. 
 
-* Get Pairing Code and Pair with HashPack Wallet
+* Get Pairing Code and Pair with HashPack Wallet.
    ```js
    app.get("/getPairKey/:memberID/:hederaNetwork", async (req, res) => {
    ```
@@ -145,7 +145,7 @@ These are the main functions and endpoints that are possible with our backend No
 
 This allows you to receive a Pairing Code from the HashConnect SDK and use it in our mobile app to pair your HashPack wallet.
 
-* Send HBAR Transaction from HashPack Wallet 
+* Send HBAR Transaction from HashPack Wallet.
    ```js
    app.post("/sendTransaction", async (req, res) => {
    ```
@@ -189,7 +189,7 @@ This allow us to verify a subNFT if it is authentic and in the paired HashPack w
 
 This allows you to verify a specific subNFT to see if it is authentic. In the example above you can see we scan the QR code on the merchandise, then query a mirrornode on the Hedera Hashgraph to look up the metadata of the minted "Certificate of Authenticity" for the physical merchandise to see if it is authentic and if the currently paired HashPack wallet contains it. 
 
-* Launch Smart Contract (`NFTFan.sol`)
+* Launch Smart Contract (`NFTFan.sol`).
 
 Launch our Smart Contract which mints a Certificate of Authenticity token for our subNFTs.
    ```js
@@ -214,14 +214,14 @@ We configure and then deploy our Solidity contract onto the network:
       nftPriceInHbar._valueInTinybar
 
     );
-    ```
+  ```
 
-* Use our previously launched contract to mint our NFT which will contain metadata for the Hedera 
-Accounts on our corresponding subNFT merchandise.
-    ```js
-    app.post("/mintNFT", async (req, res) => {
+* Mint NFT function from our Smart Contract (`NFTFan.sol`).
 
-    ```
+Use our previously launched contract to mint our NFT which will contain metadata for the Hedera Accounts on our corresponding subNFT merchandise.
+   ```js
+   app.post("/mintNFT", async (req, res) => {
+   ```
 
 We find the contract using our Firebase backend and then mint the NFT:
   ```js
@@ -235,11 +235,13 @@ We find the contract using our Firebase backend and then mint the NFT:
       .catch(err => console.log(err.message))
     ```
 
-* This allows us to transfer the "Certificate of Authenticty" token of the subNFT to the winner of a specific subNFT auction.
-    ```js
-    app.post("/transferNFT", async (req, res) => { 
+* Transfer NFT function for when a user acquires a subNFT.
 
-    ```
+This allows us to transfer the "Certificate of Authenticty" token of the subNFT to the winner of a specific subNFT auction.
+
+   ```js
+   app.post("/transferNFT", async (req, res) => {
+   ```
 
 These always come from our original treasury and then are passed to the user on their paired HashPack wallet:
   ```js
@@ -251,11 +253,13 @@ These always come from our original treasury and then are passed to the user on 
     let tokenTransferRx = await tokenTransferSubmit.getReceipt(client);
     ```
 
-* This function allows us to create unique billing logs when doing HBAR transfers and keep a history of it on our Firebase backend.
-    ```js
-    async function createBilling(userid, hbarAmount, tokenamount) {
+* Create Billing function for HBAR Transfers.
 
-    ```
+This function allows us to create unique billing logs when doing HBAR transfers and keep a history of it on our Firebase backend.
+
+   ```js
+    async function createBilling(userid, hbarAmount, tokenamount) {
+   ```
 
 We use this to credit the correct amount of Comm Tokens after they have been successfully purchased via HBAR.
   ```js
