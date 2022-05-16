@@ -225,7 +225,7 @@ Use our previously launched contract to mint our NFT which will contain metadata
 
 We find the contract using our Firebase backend and then mint the NFT:
   ```js
-     let contractData;
+    let contractData;
       const ans = await admin.firestore().collection('livecontracts').where('contractID','==',contractId)
       .get().then(querySnapshot => {
             querySnapshot.forEach(doc => {
@@ -233,7 +233,7 @@ We find the contract using our Firebase backend and then mint the NFT:
           })
       })
       .catch(err => console.log(err.message))
-    ```
+  ```
 
 * Transfer NFT function for when a user acquires a subNFT.
 
@@ -251,44 +251,44 @@ These always come from our original treasury and then are passed to the user on 
       .sign(treasuryKey);
     let tokenTransferSubmit = await tokenTransferTx.execute(client);
     let tokenTransferRx = await tokenTransferSubmit.getReceipt(client);
-    ```
+  ```
 
 * Create Billing function for HBAR Transfers.
 
 This function allows us to create unique billing logs when doing HBAR transfers and keep a history of it on our Firebase backend.
 
    ```js
-    async function createBilling(userid, hbarAmount, tokenamount) {
+      async function createBilling(userid, hbarAmount, tokenamount) {
    ```
 
 We use this to credit the correct amount of Comm Tokens after they have been successfully purchased via HBAR.
   ```js
-  const billingLogRef = firestore.collection("billing_logs").doc();
-  var billingLog = {
-    user_id: userId,
-    service,
-    product_id: productId,
-    purchase_id: purchaseId,
-    quantity,
-    transaction_date: transactionDate,
-    price_value: priceValue,
-    price_currency: priceCurrency,
-    environment: environment,
-  };
-  batch.set(billingLogRef, billingLog);
-    ```
+      const billingLogRef = firestore.collection("billing_logs").doc();
+      var billingLog = {
+        user_id: userId,
+        service,
+        product_id: productId,
+        purchase_id: purchaseId,
+        quantity,
+        transaction_date: transactionDate,
+        price_value: priceValue,
+        price_currency: priceCurrency,
+        environment: environment,
+      };
+      batch.set(billingLogRef, billingLog);
+  ```
 
 We also create a reference of the Comm Token specifically that was purchased and log it into our Firebase backend:
   ```js
-  const tokenCreationRef = firestore.collection("token_creation_logs").doc();
-  var tokenCreation = {
-    user_id: userId,
-    source: "purchased",
-    amount: amount,
-    creation_date: creationDate,
-    expiration_date: expirationDate,
-    price_value: priceValue,
-    price_currency: priceCurrency,
-  };
-  batch.set(tokenCreationRef, tokenCreation);
-    ```
+    const tokenCreationRef = firestore.collection("token_creation_logs").doc();
+    var tokenCreation = {
+      user_id: userId,
+      source: "purchased",
+      amount: amount,
+      creation_date: creationDate,
+      expiration_date: expirationDate,
+      price_value: priceValue,
+      price_currency: priceCurrency,
+    };
+    batch.set(tokenCreationRef, tokenCreation);
+  ```
