@@ -157,7 +157,10 @@ This allows you to create a Transaction Request in your HashPack wallet for a sp
 
 Notice in the above example from our app how it dynamically calculates the price in that very moment to acquire the Comm Token.
 
-* We handle royalty payments directly to the NFT Creators for each HBAR transaction made through our app when acquiring internal Comm Tokens. 
+* Pay Royalty to the NFT Creators.
+
+We handle royalty payments directly to the NFT Creators for each HBAR transaction made through our app when acquiring internal Comm Tokens. 
+
     ```js
     app.get('/payRoyalty', async (req, res) => {
  
@@ -174,7 +177,10 @@ This endpoint utilizes a Smart Contract to fulfill this transaction.
 
 
 
-* This allow us to verify a subNFT if it is authentic and is in the paired HashPack wallet.
+* Verify subNFT Item of a specfic merchandise.
+
+This allow us to verify a subNFT if it is authentic and in the paired HashPack wallet.
+
    ```js
    app.post("/getMetadata", async (req, res) => {
    ```
@@ -183,11 +189,12 @@ This endpoint utilizes a Smart Contract to fulfill this transaction.
 
 This allows you to verify a specific subNFT to see if it is authentic. In the example above you can see we scan the QR code on the merchandise, then query a mirrornode on the Hedera Hashgraph to look up the metadata of the minted "Certificate of Authenticity" for the physical merchandise to see if it is authentic and if the currently paired HashPack wallet contains it. 
 
-* Launch our Smart Contract which mints a Certificate of Authenticity token for our subNFTs.
-    ```js
-    app.post("/launchContract", async (req, res) => {
+* Launch Smart Contract (`NFTFan.sol`)
 
-    ```
+Launch our Smart Contract which mints a Certificate of Authenticity token for our subNFTs.
+   ```js
+   app.post("/launchContract", async (req, res) => {
+   ```
 
 We configure and then deploy our Solidity contract onto the network:
   ```js
