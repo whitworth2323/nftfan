@@ -22,6 +22,8 @@
   </p>
   <br />
   <br />
+
+  </div>
   <!-- ABOUT THE PROJECT -->
   ## About The Project
 
@@ -68,4 +70,3 @@ These are the main functions and endpoints that are possible with this backend w
 
 
 
-</div>
