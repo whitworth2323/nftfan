@@ -9,7 +9,7 @@
   <h3 align="center">NFT Fan Club for Hedera: Aurora Project</h3>
 
   <p align="center">
-    An Apple App Store app for the 2022 Hedera Hackathon that hosts auctions for subNFTs which are physical items, such as coffee mugs, incorporating NFT artwork. This provides an additional income stream for NFT creators and owners.
+    An Apple App Store app for that hosts auctions for subNFTs which are physical items, such as coffee mugs, incorporating NFT artwork. This provides an additional income stream for NFT creators and owners.
     <br /><br />
     This project is the backend server for our Apple App Store app which interacts with the Hedera HashGraph and uses Smart Contracts.
     <br /><br />
